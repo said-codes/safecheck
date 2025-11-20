@@ -14,6 +14,7 @@ const tabs = Array.from(document.querySelectorAll('.tab'))
 const serviceStatusEl = document.getElementById('service-status')
 const toggleDiagnosticsBtn = document.getElementById('toggle-diagnostics')
 let diagnosticsOpen = false
+let CURRENT_API_BASE = ''
 
 function show(view) {
   homeView.classList.add('hidden')
@@ -72,8 +73,8 @@ function renderStatus(status) {
   k1.textContent = 'Backend'
   const v1 = document.createElement('div')
   const b1 = document.createElement('span')
-  b1.className = 'badge ' + (API_BASE ? 'ok' : 'err')
-  b1.textContent = API_BASE || 'local (sin API)'
+  b1.className = 'badge ' + (CURRENT_API_BASE ? 'ok' : 'err')
+  b1.textContent = CURRENT_API_BASE || 'local (sin API)'
   v1.appendChild(b1)
   backendRow.appendChild(k1)
   backendRow.appendChild(v1)
@@ -122,6 +123,7 @@ async function analyze(url) {
   try {
     let apiBase = API_BASE || ((typeof location !== 'undefined' && /^https?/.test(location.protocol)) ? location.origin : '')
     if (!apiBase) apiBase = DEFAULT_FALLBACK_API
+    CURRENT_API_BASE = apiBase
     let reqUrl = `${apiBase}/api/combined?url=${encodeURIComponent(url)}`
     let res = await fetch(reqUrl)
     let json = null
@@ -132,6 +134,7 @@ async function analyze(url) {
       const text = await res.text()
       if (apiBase !== DEFAULT_FALLBACK_API) {
         apiBase = DEFAULT_FALLBACK_API
+        CURRENT_API_BASE = apiBase
         reqUrl = `${apiBase}/api/combined?url=${encodeURIComponent(url)}`
         res = await fetch(reqUrl)
         const ct2 = res.headers.get('content-type') || ''
