@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
     let classification = 'harmless'
     if ((stats.malicious || 0) > 0) classification = 'malicious'
     else if ((stats.suspicious || 0) > 0) classification = 'suspicious'
-    res.status(200).json({ malicious_count: stats.malicious || 0, suspicious_count: stats.suspicious || 0, harmless_count: stats.harmless || 0, undetected_count: stats.undetected || 0, engines, classification, raw: aj })
+    res.status(200).json({ malicious_count: stats.malicious || 0, suspicious_count: stats.suspicious || 0, harmless_count: stats.harmless || 0, undetected_count: stats.undetected || 0, engines, classification, analysis_id: id || null, raw: aj })
   } catch (e) {
     res.status(200).json({ malicious_count: 0, suspicious_count: 0, harmless_count: 0, undetected_count: 0, engines: [], classification: 'unknown', raw: 'unavailable' })
   }
