@@ -56,7 +56,7 @@ function renderTab(name, data) {
   tabContent.innerHTML = ''
   const title = document.createElement('div')
   const badge = document.createElement('span')
-  badge.className = 'badge ' + (name === 'phishtank' ? (data.phishing ? 'dangerous' : 'safe') : name === 'virustotal' ? (data.malicious_count > 0 ? 'dangerous' : data.suspicious_count > 0 ? 'suspicious' : 'safe') : name === 'ipqs' ? (data.unsafe || data.phishing ? 'dangerous' : data.suspicious ? 'suspicious' : 'safe') : (data.blacklisted ? 'dangerous' : 'safe'))
+  badge.className = 'badge ' + (name === 'virustotal' ? (data.malicious_count > 0 ? 'dangerous' : data.suspicious_count > 0 ? 'suspicious' : 'safe') : name === 'ipqs' ? (data.unsafe || data.phishing ? 'dangerous' : data.suspicious ? 'suspicious' : 'safe') : name === 'abuse' ? (data.blacklisted ? 'dangerous' : 'safe') : 'safe')
   badge.textContent = name.toUpperCase()
   title.appendChild(badge)
   tabContent.appendChild(title)
@@ -80,7 +80,6 @@ function renderStatus(status) {
   serviceStatusEl.appendChild(backendRow)
 
   const map = {
-    phishtank: 'PhishTank',
     ipqs: 'IPQualityScore',
     virustotal: 'VirusTotal',
     abuse: 'AbuseIPDB/URLHaus'
@@ -147,7 +146,7 @@ async function analyze(url) {
     renderStatus(json.serviceStatus || {})
     tabs.forEach(t => t.classList.remove('active'))
     tabs[0].classList.add('active')
-    renderTab('phishtank', json.services.phishtank)
+    renderTab('ipqs', json.services.ipqs)
     tabs.forEach(t => {
       t.onclick = () => {
         tabs.forEach(tt=>tt.classList.remove('active'))
@@ -247,6 +246,13 @@ function buildPairs(name, data) {
     if (nonEmpty(raw.server)) push('Servidor', raw.server)
     if (nonEmpty(raw.status_code)) push('HTTP', String(raw.status_code))
     if (nonEmpty(raw.content_type)) push('Contenido', raw.content_type)
+    if (nonEmpty(raw.domain_rank)) push('Ranking de dominio', String(raw.domain_rank))
+    if (nonEmpty(raw.page_size)) push('Tamaño de página', `${Math.round(raw.page_size/1024)} KB`)
+    if (raw.spf_record) push('SPF', 'Sí')
+    if (raw.dmarc_record) push('DMARC', 'Sí')
+    if (raw.redirected) push('Redirección', 'Sí')
+    if (raw.risky_tld) push('TLD riesgoso', 'Sí')
+    if (Array.isArray(raw.technologies) && raw.technologies.length) push('Tecnologías', raw.technologies.slice(0,6).join(', '))
     const fu = cleanStr(raw.final_url)
     if (nonEmpty(fu)) push('URL final', fu)
     return out
@@ -256,8 +262,11 @@ function buildPairs(name, data) {
     if (cls) push('Clasificación', cls)
     if (typeof data.malicious_count === 'number') push('Detecciones maliciosas', String(data.malicious_count))
     if (typeof data.suspicious_count === 'number') push('Detecciones sospechosas', String(data.suspicious_count))
+    if (typeof data.harmless_count === 'number') push('Detecciones limpias', String(data.harmless_count))
+    if (typeof data.undetected_count === 'number') push('No detectado', String(data.undetected_count))
     const engines = Array.isArray(data.engines) ? data.engines : []
     push('Motores detectores', engines.length ? engines.slice(0, 8).join(', ') : 'Ninguno')
+    if (data.analysis_id) push('ID análisis', data.analysis_id)
     return out
   }
   if (name === 'abuse') {
@@ -268,6 +277,12 @@ function buildPairs(name, data) {
     if (lr) push('Último reporte', lr)
     const isp = a && a.raw && a.raw.data && a.raw.data.isp ? a.raw.data.isp : null
     if (isp) push('Proveedor', isp)
+    const cc = a && a.raw && a.raw.data && a.raw.data.countryCode ? a.raw.data.countryCode : null
+    if (cc) push('País IP', cc)
+    const ut = a && a.raw && a.raw.data && a.raw.data.usageType ? a.raw.data.usageType : null
+    if (ut) push('Uso', ut)
+    const isTor = a && a.raw && a.raw.data && a.raw.data.isTor
+    if (isTor) push('Tor', 'Sí')
     const hostnames = a && a.raw && a.raw.data && Array.isArray(a.raw.data.hostnames) ? a.raw.data.hostnames.slice(0, 4) : []
     if (hostnames.length) push('Hostnames', hostnames.join(', '))
     if (data.blacklisted) push('Listas negras', 'Sí')
