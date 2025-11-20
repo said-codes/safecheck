@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SafeCheck URL Scanner Web</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <img src="./public/icons/shield.svg" alt="SafeCheck" class="brand-icon">
+    <span>SafeCheck URL Scanner</span>
+  </div>
+</header>
+
+<main class="container">
+  <section id="view-home" class="card">
+    <div class="card-header">
+      <h1>SafeCheck URL Scanner</h1>
+    </div>
+    <div class="card-body">
+      <p>Analizar seguridad del sitio web actual</p>
+      <div class="input-row">
+        <input id="url-input" type="url" placeholder="https://ejemplo.com" autocomplete="off">
+        <button id="analyze-btn" class="btn btn-primary">Analizar URL</button>
+      </div>
+    </div>
+    <div class="card-footer">Powered by SafeCheck</div>
+  </section>
+
+  <section id="view-loading" class="card hidden">
+    <div class="card-header">
+      <h1>SafeCheck URL Scanner</h1>
+    </div>
+    <div class="card-body">
+      <p>Analizando…</p>
+      <div class="loader"></div>
+      <div id="loading-url" class="loading-url"></div>
+    </div>
+    <div class="card-footer">Powered by SafeCheck</div>
+  </section>
+
+  <section id="view-result" class="card hidden">
+    <div class="card-header">
+      <h1>SafeCheck URL Scanner</h1>
+    </div>
+    <div class="card-body">
+      <div id="verdict-box" class="verdict-box">
+        <div class="verdict-title" id="verdict-title"></div>
+        <div class="score" id="score"></div>
+        <div class="explanation" id="explanation"></div>
+      </div>
+      <div id="service-status" class="service-status"></div>
+      <div class="tabs">
+        <button class="tab active" data-tab="phishtank">PhishTank</button>
+        <button class="tab" data-tab="ipqs">IPQualityScore</button>
+        <button class="tab" data-tab="virustotal">VirusTotal</button>
+        <button class="tab" data-tab="abuse">AbuseIPDB / Abuse.ch</button>
+      </div>
+      <div class="tab-content" id="tab-content"></div>
+      <div class="actions">
+        <button id="toggle-diagnostics" class="btn btn-link">Ver detalles</button>
+        <button id="reanalyze-btn" class="btn btn-link">Volver a analizar</button>
+      </div>
+    </div>
+    <div class="card-footer">Powered by SafeCheck</div>
+  </section>
+</main>
+
+<script src="./app.js"></script>
+</body>
+</html>
