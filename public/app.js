@@ -43,7 +43,10 @@ function renderKV(k, v) {
   const key = document.createElement('div')
   key.textContent = k
   const val = document.createElement('div')
-  val.textContent = typeof v === 'object' ? JSON.stringify(v) : String(v)
+  let text = v
+  if (Array.isArray(v)) text = v.join(', ')
+  else if (typeof v === 'object' && v !== null) text = ''
+  val.textContent = String(text)
   row.appendChild(key)
   row.appendChild(val)
   return row
@@ -57,7 +60,8 @@ function renderTab(name, data) {
   badge.textContent = name.toUpperCase()
   title.appendChild(badge)
   tabContent.appendChild(title)
-  Object.entries(data || {}).forEach(([k,v])=>tabContent.appendChild(renderKV(k,v)))
+  const pairs = buildPairs(name, data || {})
+  pairs.forEach(p => tabContent.appendChild(renderKV(p.k, p.v)))
 }
 
 function renderStatus(status) {
@@ -187,6 +191,94 @@ if (toggleDiagnosticsBtn) {
     serviceStatusEl.style.display = diagnosticsOpen ? 'block' : 'none'
     toggleDiagnosticsBtn.textContent = diagnosticsOpen ? 'Ocultar detalles' : 'Ver detalles'
   })
+}
+
+function yn(b) { return b === true ? 'Sí' : b === false ? null : null }
+function fmtDate(s) {
+  if (!s) return null
+  const d = new Date(s)
+  if (isNaN(d.getTime())) return null
+  return d.toLocaleString('es-ES')
+}
+function nonEmpty(v) {
+  if (v === null || v === undefined) return false
+  if (typeof v === 'string') return v.trim().length > 0
+  if (Array.isArray(v)) return v.length > 0
+  if (typeof v === 'number') return true
+  if (typeof v === 'boolean') return v === true
+  return true
+}
+function cleanStr(s) {
+  if (typeof s !== 'string') return s
+  return s.replace(/^['"`]+|['"`]+$/g, '')
+}
+function buildPairs(name, data) {
+  const out = []
+  const push = (k, v) => { if (nonEmpty(v)) out.push({ k, v }) }
+  if (name === 'phishtank') {
+    if (data.raw === 'unavailable') push('Estado', 'Servicio temporalmente no disponible')
+    const ph = yn(data.phishing)
+    const ver = yn(data.verified)
+    if (ph) push('Phishing conocido', ph)
+    if (ver) push('Verificado', ver)
+    const fr = fmtDate(data.first_report)
+    const lu = fmtDate(data.last_update)
+    if (fr) push('Primera detección', fr)
+    if (lu) push('Última actualización', lu)
+    if (out.length === 0) push('Resumen', 'Sin coincidencias conocidas')
+    return out
+  }
+  if (name === 'ipqs') {
+    if (typeof data.risk_score === 'number') push('Riesgo', `${data.risk_score}/100`)
+    const flags = []
+    if (data.phishing) flags.push('Phishing')
+    if (data.malware) flags.push('Malware')
+    if (data.suspicious) flags.push('Sospechoso')
+    if (data.unsafe) flags.push('Inseguro')
+    if (data.proxy) flags.push('Proxy')
+    if (data.vpn) flags.push('VPN')
+    if (data.tor) flags.push('Tor')
+    if (data.bots) flags.push('Bots')
+    push('Advertencias', flags.length ? flags.join(', ') : 'Sin hallazgos')
+    const age = data.domain_age && (data.domain_age.human || null)
+    if (age) push('Edad de dominio', age)
+    const raw = data.raw || {}
+    if (nonEmpty(raw.country_code)) push('País', raw.country_code)
+    if (nonEmpty(raw.server)) push('Servidor', raw.server)
+    if (nonEmpty(raw.status_code)) push('HTTP', String(raw.status_code))
+    if (nonEmpty(raw.content_type)) push('Contenido', raw.content_type)
+    const fu = cleanStr(raw.final_url)
+    if (nonEmpty(fu)) push('URL final', fu)
+    return out
+  }
+  if (name === 'virustotal') {
+    const cls = data.classification === 'malicious' ? 'Peligroso' : data.classification === 'suspicious' ? 'Sospechoso' : data.classification === 'harmless' ? 'Limpio' : null
+    if (cls) push('Clasificación', cls)
+    if (typeof data.malicious_count === 'number') push('Detecciones maliciosas', String(data.malicious_count))
+    if (typeof data.suspicious_count === 'number') push('Detecciones sospechosas', String(data.suspicious_count))
+    const engines = Array.isArray(data.engines) ? data.engines : []
+    push('Motores detectores', engines.length ? engines.slice(0, 8).join(', ') : 'Ninguno')
+    return out
+  }
+  if (name === 'abuse') {
+    if (nonEmpty(data.ip)) push('IP', data.ip)
+    const a = data.abuseIPDB || {}
+    if (a && a.totalReports > 0) push('Reportes de abuso', String(a.totalReports))
+    const lr = a && a.lastReportedAt ? fmtDate(a.lastReportedAt) : null
+    if (lr) push('Último reporte', lr)
+    const isp = a && a.raw && a.raw.data && a.raw.data.isp ? a.raw.data.isp : null
+    if (isp) push('Proveedor', isp)
+    const hostnames = a && a.raw && a.raw.data && Array.isArray(a.raw.data.hostnames) ? a.raw.data.hostnames.slice(0, 4) : []
+    if (hostnames.length) push('Hostnames', hostnames.join(', '))
+    if (data.blacklisted) push('Listas negras', 'Sí')
+    const uh = data.urlhaus || {}
+    if (uh.listed) push('URLHaus', 'Listado')
+    if (uh.threat) push('Amenaza', uh.threat)
+    if (uh.url_status) push('Estado URL', uh.url_status)
+    if (out.length === 0) push('Resumen', 'Sin reportes y sin listas negras')
+    return out
+  }
+  return out
 }
 
 show(homeView)
