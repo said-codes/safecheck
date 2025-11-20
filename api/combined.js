@@ -6,24 +6,6 @@ module.exports = async (req, res) => {
   const input = req.query.url || (req.body && req.body.url)
   if (!input) return res.status(400).json({ error: 'missing url' })
   try {
-    const ptRes = await (async () => {
-      try {
-        const body = new URLSearchParams({ url: input, format: 'json' }).toString()
-        const r = await fetch('https://checkurl.phishtank.com/checkurl/', {
-          method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'SafeCheck/1.0' }, body
-        })
-        const data = await r.json()
-        let phishing = null, verified = null, first_report = null, last_update = null
-        if (data && data.results) {
-          const d = data.results
-          phishing = !!d.in_database && !!d.valid
-          verified = !!d.verified
-          first_report = d.first_seen || null
-          last_update = d.last_update || null
-        }
-        return { phishing, verified, first_report, last_update, raw: data }
-      } catch { return { phishing: null, verified: null, first_report: null, last_update: null, raw: 'unavailable' } }
-    })()
 
     const ipqsKey = process.env.IPQS_KEY
     const ipqsRes = await (async () => {
@@ -111,14 +93,12 @@ module.exports = async (req, res) => {
     const strong = (
       (ipqsRes && (ipqsRes.unsafe || ipqsRes.phishing)) ||
       (vtRes && (vtRes.malicious_count || 0) > 0) ||
-      (abRes && (abRes.blacklisted === true)) ||
-      (ptRes && ptRes.phishing === true)
+      (abRes && (abRes.blacklisted === true))
     )
     const warn = (
       (ipqsRes && (ipqsRes.suspicious || (ipqsRes.risk_score || 0) >= 50)) ||
       (vtRes && (vtRes.suspicious_count || 0) > 0) ||
-      (abRes && ((abRes.abuseIPDB && (abRes.abuseIPDB.totalReports || 0) > 0) || abRes.urlhaus && abRes.urlhaus.url_status === 'online')) ||
-      (ptRes && ptRes.verified === false)
+      (abRes && ((abRes.abuseIPDB && (abRes.abuseIPDB.totalReports || 0) > 0) || abRes.urlhaus && abRes.urlhaus.url_status === 'online'))
     )
     if (strong) verdict = 'dangerous'
     else if (warn) verdict = 'suspicious'
@@ -133,12 +113,11 @@ module.exports = async (req, res) => {
     else if (vtRes && (vtRes.suspicious_count || 0) > 0) score -= 3
     if (abRes && abRes.abuseIPDB && typeof abRes.abuseIPDB.score === 'number') score -= Math.round(abRes.abuseIPDB.score / 15)
     if (abRes && abRes.blacklisted) score -= 4
-    if (ptRes && ptRes.phishing === true) score -= 6
+    
     if (score < 0) score = 0
     if (score > 10) score = 10
     const missingKeys = [ipqsRes, vtRes, abRes].some(s => s && s.missingKey)
     const serviceStatus = {
-      phishtank: ptRes && ptRes.raw === 'unavailable' ? 'error' : 'ok',
       ipqs: ipqsRes && ipqsRes.missingKey ? 'missing_key' : (ipqsRes && ipqsRes.error ? 'error' : 'ok'),
       virustotal: vtRes && vtRes.missingKey ? 'missing_key' : (vtRes && vtRes.error ? 'error' : 'ok'),
       abuse: abRes && abRes.missingKey ? 'missing_key' : ((abRes && (abRes.urlhaus || abRes.abuseIPDB)) ? 'ok' : 'error')
@@ -150,7 +129,7 @@ module.exports = async (req, res) => {
         : verdict === 'suspicious'
           ? 'Dominio con patrones inusuales o advertencias'
           : 'Certificados, reputación y listas sin coincidencias'
-    res.status(200).json({ globalVerdict: verdict, score, explanation, serviceStatus, services: { phishtank: ptRes || {}, ipqs: ipqsRes || {}, virustotal: vtRes || {}, abuse: abRes || {} } })
+    res.status(200).json({ globalVerdict: verdict, score, explanation, serviceStatus, services: { ipqs: ipqsRes || {}, virustotal: vtRes || {}, abuse: abRes || {} } })
   } catch (e) {
     res.status(200).json({ globalVerdict: 'suspicious', score: 5, explanation: 'No fue posible combinar todos los servicios', services: { phishtank: {}, ipqs: {}, virustotal: {}, abuse: {} } })
   }
